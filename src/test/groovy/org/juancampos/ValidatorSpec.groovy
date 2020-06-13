@@ -1,5 +1,6 @@
 package org.juancampos
 
+import org.apache.commons.lang3.tuple.Pair
 import spock.lang.Specification
 import spock.lang.Unroll
 
@@ -82,6 +83,23 @@ class ValidatorSpec extends Specification {
         "RES(1,2)"     | false
         "%RES(1,2"     | true
         "#(a,5,+(a,a))"| false
+    }
+
+    @Unroll
+    def "Test main validator method. When Input = '#input' then validate result = '#expectedOutput'"() {
+        given:"A new instance of validator"
+        def validator = new Validator()
+        when:"Validate for input"
+        def actualValue = validator.validate(input)
+        then:"The validator returns the expected result"
+        actualValue.equals(expectedOutput)
+        where:""
+        input | expectedOutput
+        ""    | Pair.of(false,Validator.INVALID_INPUT_EMPTY_COMMAND)
+        "(("  | Pair.of(false,Validator.INVALID_INPUT_MAL_FORMED_PARENTHESIS)
+        "AD(1,2)" | Pair.of(false,Validator.INVALID_FIRST_OPERATION_MUST_BE_ADD_SUB_MULT_DIV_OR_LET)
+        "+(1,2)!" | Pair.of(false,Validator.INVALID_CHARACTERS_IN_INPUT)
+        "+(1,1)"  | Pair.of(true,Validator.VALID_INPUT)
     }
 
 

@@ -2,6 +2,7 @@ package org.juancampos;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.juancampos.enums.Operators;
@@ -67,75 +68,14 @@ public class CalculatorEngine {
                 negate = -1;
                 continue;
             }
-            if (calculatorChar == LET_OPERATOR) {
-                LOGGER.debug(LET_OPERATOR_TO_ASSIGN_VALUE_TO_VARIABLE_BEGINS);// The let operator is present, a let expression is parsed
-                i++;
-                calculatorChar = s.charAt(i);
-                if (calculatorChar == '(') {
-                    operators.push(calculatorChar);
-                    LOGGER.debug(MessageFormat.format(OPERATORS_STACK_PUSH,operators.peek()));
-                    i++;
-                    calculatorChar = s.charAt(i);
-                }
-                StringBuilder variableName = new StringBuilder(String.valueOf(calculatorChar));
-                if (Character.isAlphabetic(calculatorChar)){
-                    while (i < s.length() - 1 && Character.isAlphabetic(s.charAt(i+1))) {
-                        variableName.append(s.charAt(i + 1));
-                        i++;
-                    }
-                }
-                LOGGER.debug(MessageFormat.format(VARIABLE_NAME,variableName.toString()));
-                i++;
-                calculatorChar = s.charAt(i);
-                if (calculatorChar != ','){
-                    LOGGER.error(INVALID_ARGUMENT_FOR_CALCULATOR);// A variable name must be immediately followed by a comma to specify the value expression
-                    throw new CalculatorException(INVALID_ARGUMENT_FOR_CALCULATOR);
-                } else {
-                    i++;
-                    calculatorChar = s.charAt(i);
-                }
-
-                if (calculatorChar == '-'){
-                    negate = -1;
-                }
-                long possibleNumber;
-                if (Character.isDigit(calculatorChar)) { //if its a digit, the variable name can have a value assigned immediately
-                    possibleNumber = calculatorChar - '0';
-                    // iteratively calculate each number
-                    while (i < s.length() - 1 && Character.isDigit(s.charAt(i+1))) {
-                        possibleNumber = possibleNumber * 10 + (s.charAt(i+1) - '0');
-                        i++;
-                    }
-                    possibleNumber = possibleNumber * negate;
-                    negate = 1;
-                    variablesMap.put(variableName.toString(), ImmutablePair.of(possibleNumber, true));
-                    LOGGER.debug(MessageFormat.format(VARIABLE_ASSIGNED,variableName.toString(),possibleNumber));
-                    i++;
-                    continue;
-                }
-                variablesMap.put(variableName.toString(), ImmutablePair.of(0L, false));
-                expressions.push(variableName.toString());
-                LOGGER.debug(MessageFormat.format(VARIABLE_NOT_ASSIGNED_PUSHED_TO_EXPRESSIONS_STACK,variableName.toString()));
+            if (calculatorChar == LET_OPERATOR) {  //If the operator is a let operator, process to resolve the variable name
+               i = processLetOperator(i,s,operators,expressions,variablesMap);
+              continue;
             }
 
-            if (Character.isAlphabetic(calculatorChar)){ //If the variable name is present, is possible to resolve it
-                StringBuilder variableName = new StringBuilder(String.valueOf(calculatorChar));
-                while (i < s.length() - 1 && Character.isAlphabetic(s.charAt(i+1))) {
-                    variableName.append(s.charAt(i + 1));
-                    i++;
-                }
-                if (variablesMap.containsKey(variableName.toString()) && variablesMap.get(variableName.toString()).getRight()){
-                    numbers.push(variablesMap.get(variableName.toString()).getLeft());
-                    LOGGER.debug(MessageFormat.format(NUMBER_STACK_PUSH,numbers.peek()));
-                    i++;
-                    calculatorChar = s.charAt(i);
-                } else if (numbers.size() == 1){
-                    variablesMap.put(variableName.toString(), ImmutablePair.of(numbers.peek(), true));
-                    LOGGER.debug(MessageFormat.format(VARIABLE_ASSIGNED,variableName.toString(),variablesMap.get(variableName.toString()).getLeft()));
-                } else {
-                    variablesMap.put(variableName.toString(), ImmutablePair.of(0L, false));
-                    LOGGER.debug(MessageFormat.format(VARIABLE_NOT_ASSIGNED_PUSHED_TO_EXPRESSIONS_STACK,variableName.toString()));
-                }
+            if (Character.isAlphabetic(calculatorChar)){ //If the variable name is present, is possible to resolve it. Move the counter accordingly
+                i = resolveVariableName(s, numbers, variablesMap, i, calculatorChar);
+                calculatorChar = s.charAt(i);
             }
 
 
@@ -187,6 +127,82 @@ public class CalculatorEngine {
         return numbers.pop();
     }
 
+    protected static int resolveVariableName(String s, Stack<Long> numbers, HashMap<String, Pair<Long, Boolean>> variablesMap, int i, char calculatorChar) {
+        StringBuilder variableName = new StringBuilder(String.valueOf(calculatorChar));
+        while (i < s.length() - 1 && Character.isAlphabetic(s.charAt(i+1))) {
+            variableName.append(s.charAt(i + 1));
+            i++;
+        }
+        if (variablesMap.containsKey(variableName.toString()) && variablesMap.get(variableName.toString()).getRight()){
+            numbers.push(variablesMap.get(variableName.toString()).getLeft());
+            LOGGER.debug(MessageFormat.format(NUMBER_STACK_PUSH,numbers.peek()));
+            i++;
+        } else if (numbers.size() == 1){
+            variablesMap.put(variableName.toString(), ImmutablePair.of(numbers.peek(), true));
+            LOGGER.debug(MessageFormat.format(VARIABLE_ASSIGNED,variableName.toString(),variablesMap.get(variableName.toString()).getLeft()));
+        } else {
+            variablesMap.put(variableName.toString(), ImmutablePair.of(0L, false));
+            LOGGER.debug(MessageFormat.format(VARIABLE_NOT_ASSIGNED_PUSHED_TO_EXPRESSIONS_STACK,variableName.toString()));
+        }
+        return i;
+    }
+
+    private static int processLetOperator(int i, String s,Stack<Character> operators,Stack<String>expressions, HashMap<String, Pair<Long,Boolean>> variablesMap) {
+        LOGGER.debug(LET_OPERATOR_TO_ASSIGN_VALUE_TO_VARIABLE_BEGINS);// The let operator is present, a let expression is parsed
+        i++;
+        boolean continueFlag = false;
+        char calculatorChar = s.charAt(i);
+        if (calculatorChar == '(') {
+            operators.push(calculatorChar);
+            LOGGER.debug(MessageFormat.format(OPERATORS_STACK_PUSH,operators.peek()));
+            i++;
+            calculatorChar = s.charAt(i);
+        }
+        StringBuilder variableName = new StringBuilder(String.valueOf(calculatorChar));
+        if (Character.isAlphabetic(calculatorChar)){
+            while (i < s.length() - 1 && Character.isAlphabetic(s.charAt(i+1))) {
+                variableName.append(s.charAt(i + 1));
+                i++;
+            }
+        }
+        LOGGER.debug(MessageFormat.format(VARIABLE_NAME,variableName.toString()));
+        i++;
+        calculatorChar = s.charAt(i);
+        if (calculatorChar != ','){
+            LOGGER.error(INVALID_ARGUMENT_FOR_CALCULATOR);// A variable name must be immediately followed by a comma to specify the value expression
+            throw new CalculatorException(INVALID_ARGUMENT_FOR_CALCULATOR);
+        } else {
+            i++;
+            calculatorChar = s.charAt(i);
+        }
+        int negate = 1;
+        if (calculatorChar == '-'){
+            negate = -1;
+            i++;
+            calculatorChar = s.charAt(i);
+        }
+        long possibleNumber;
+        if (Character.isDigit(calculatorChar)) { //if its a digit, the variable name can have a value assigned immediately
+            possibleNumber = calculatorChar - '0';
+            // iteratively calculate each number
+            while (i < s.length() - 1 && Character.isDigit(s.charAt(i+1))) {
+                possibleNumber = possibleNumber * 10 + (s.charAt(i+1) - '0');
+                i++;
+            }
+            possibleNumber = possibleNumber * negate;
+            variablesMap.put(variableName.toString(), ImmutablePair.of(possibleNumber, true));
+            LOGGER.debug(MessageFormat.format(VARIABLE_ASSIGNED,variableName.toString(),possibleNumber));
+            i++;
+            continueFlag = true;
+        }else {
+            variablesMap.put(variableName.toString(), ImmutablePair.of(0L, false));
+            expressions.push(variableName.toString());
+            LOGGER.debug(MessageFormat.format(VARIABLE_NOT_ASSIGNED_PUSHED_TO_EXPRESSIONS_STACK, variableName.toString()));
+            i--; //reset counter
+        }
+        return i;
+    }
+
     private static long operation(char operation, long secondOperand, long firstOperand) {
         LOGGER.debug(MessageFormat.format("OPERATION:{0}, FIRST OPERAND:{1}, SECOND OPERAND:{2}", operation, firstOperand,secondOperand));
         switch (operation) {
@@ -207,7 +223,6 @@ public class CalculatorEngine {
      */
     private static boolean precedence(char operator1, char operator2) {
         if (operator2 == '(' || operator2 == ')') return false;
-        if ((operator1 == '*' || operator1 == '/') && (operator2 == '+' || operator2 == '_')) return false;
-        return true;
+        return (operator1 != '*' && operator1 != '/') || (operator2 != '+' && operator2 != '_');
     }
 }
