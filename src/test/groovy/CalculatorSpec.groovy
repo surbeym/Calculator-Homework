@@ -1,3 +1,4 @@
+import org.juancampos.CalculatorException
 import spock.lang.Specification
 import spock.lang.Unroll
 
@@ -5,30 +6,30 @@ import spock.lang.Unroll
 class CalculatorSpec extends Specification {
     @Unroll
     def "Test getCommandInput = #commandInput when the input string is = #inputValues"() {
-        given:"An instance of calculator initialized to the command argument"
+        given: "An instance of calculator initialized to the command argument"
         def calculator = new Calculator()
-        when:"The calculator is called to format the command argument to make keywords into characters"
+        when: "The calculator is called to format the command argument to make keywords into characters"
         def actual = calculator.getCommandString(inputValues)
 
-        then:"The formatted command input string matches the expected value"
+        then: "The formatted command input string matches the expected value"
         actual.equals(commandInput)
-        where:"Parameterized Values"
-        inputValues | commandInput
+        where: "Parameterized Values"
+        inputValues                                                   | commandInput
         [new StringBuilder("ADD(1,ADD(1,2))")] as List<StringBuilder> | "+(1,+(1,2))"
         [new StringBuilder("let(a, let(b, 10, add(b, b)), let(b, 20, add(a, b))")] as List<StringBuilder> | "#(A,#(B,10,+(B,B)),#(B,20,+(A,B))"
     }
 
     @Unroll
     def "test calculator call when input command is #inputOperations then expectedResult = #expectedResult"() {
-        given:"A calculator instance initialized with the command line argument"
+        given: "A calculator instance initialized with the command line argument"
         def calculator = new Calculator(operations: inputOperations)
 
-        when:"The calculator is called to execute the command and return the value"
+        when: "The calculator is called to execute the command and return the value"
         def actualResult = calculator.call()
-        then:"The actual result matches the expected result from the table"
+        then: "The actual result matches the expected result from the table"
         actualResult == expectedResult
         where:
-        inputOperations                                                 | expectedResult
+        inputOperations                                                          | expectedResult
         [new StringBuilder("sub!@(5, mult(-2, 3))")]as List<StringBuilder> | 0
         [new StringBuilder("sub(5, mult(-2, 3))")]as List<StringBuilder> | 11
         [new StringBuilder("add(1, mult(2, 3))")]as List<StringBuilder> | 7
@@ -46,5 +47,20 @@ class CalculatorSpec extends Specification {
         [new StringBuilder("let(a, let(b, 10, add(b, b)), let(b, 20, add(a, b)))")] as List<StringBuilder> | 40
         [new StringBuilder("let(a, let(b, 10, add(b, 5)), let(b, 20, add(a, b)))")] as List<StringBuilder> | 35
         [new StringBuilder("let(foo, let(bar, 10, add(bar, bar)), let(bar, 20, add(foo, bar)))")] as List<StringBuilder> | 40
+    }
+
+    @Unroll
+    def "test calculator call when input command is #inputOperations with an unassigned variable then throws CalculatorException"() {
+        given: "A calculator instance initialized with the command line argument"
+        def calculator = new Calculator(operations: inputOperations)
+
+        when: "The calculator is called to execute the command and return the value"
+        calculator.call()
+        then: "The actual result matches the expected result from the table"
+        thrown CalculatorException
+        where:
+        inputOperations                                                          | expectedResult
+        [new StringBuilder("let(FOO,5, mult(FOO, BAR))")] as List<StringBuilder> | 0
+        [new StringBuilder("let(foo, let(bar, 10, add(bar, bar)), let(bar, 20, add(foo, ber)))")] as List<StringBuilder> | 40
     }
 }

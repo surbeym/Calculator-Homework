@@ -1,8 +1,8 @@
 package org.juancampos;
 
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.lang3.tuple.Triple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.juancampos.enums.Operators;
@@ -27,6 +27,7 @@ public class CalculatorEngine {
     public static final String VARIABLE_ASSIGNED = "Variable assigned. {0} = {1}";
     public static final String NUMBER_STACK_PUSH = "Number stack push = {0}";
     public static final String OPERATORS_STACK_PUSH = "Operators Stack Push: {0}";
+    public static final String MISSING_VARIABLES_NOT_ASSIGNED = "Missing Variables Not assigned";
 
     /**
      * Calculate function.
@@ -56,7 +57,8 @@ public class CalculatorEngine {
         Stack<Long> numbers = new Stack<>(); // the stack that stores numbers to be operated on
         Stack<Character> operators = new Stack<>();// the stack that holds the operators
         Stack<String> expressions = new Stack<>();//the stack to hold the expressions
-        HashMap<String, Pair<Long,Boolean>> variablesMap = new HashMap<>(); //The map containing variables with corresponding values.
+        HashMap<String, Pair<Long,Boolean>> variablesMap = new HashMap<>();
+        MutableInt variablesAssignedBal = new MutableInt(0);//map containing variables with corresponding values.
         long currentNumber;
         int negate = 1;
         for (int i = 0; i < s.length(); i++) {
@@ -69,12 +71,12 @@ public class CalculatorEngine {
                 continue;
             }
             if (calculatorChar == LET_OPERATOR) {  //If the operator is a let operator, process to resolve the variable name
-               i = processLetOperator(i,s,operators,expressions,variablesMap);
+               i = processLetOperator(i,s,operators,expressions,variablesMap,variablesAssignedBal);
               continue;
             }
 
             if (Character.isAlphabetic(calculatorChar)){ //If the variable name is present, is possible to resolve it. Move the counter accordingly
-                i = resolveVariableName(s, numbers, variablesMap, i, calculatorChar);
+                i = resolveVariableName(s, numbers, variablesMap, i, calculatorChar,variablesAssignedBal);
                 calculatorChar = s.charAt(i);
             }
 
@@ -120,6 +122,13 @@ public class CalculatorEngine {
                 LOGGER.debug(MessageFormat.format(OPERATORS_STACK_PUSH,operators.peek()));
             }
         }
+        for (Pair<Long,Boolean> variableName:variablesMap.values()){
+            if (Boolean.FALSE.equals(variableName.getRight())) {
+                LOGGER.error(MISSING_VARIABLES_NOT_ASSIGNED);
+                throw new CalculatorException(MISSING_VARIABLES_NOT_ASSIGNED);
+            }
+
+        }
         while (numbers.size() > 1 && !operators.isEmpty()) {
             numbers.push(operation(operators.pop(), numbers.pop(), numbers.pop()));
             LOGGER.debug(MessageFormat.format(NUMBER_STACK_PUSH,numbers.peek()));
@@ -127,7 +136,7 @@ public class CalculatorEngine {
         return numbers.pop();
     }
 
-    protected static int resolveVariableName(String s, Stack<Long> numbers, HashMap<String, Pair<Long, Boolean>> variablesMap, int i, char calculatorChar) {
+    protected static int resolveVariableName(String s, Stack<Long> numbers, HashMap<String, Pair<Long, Boolean>> variablesMap, int i, char calculatorChar, MutableInt variableAssignedBalance) {
         StringBuilder variableName = new StringBuilder(String.valueOf(calculatorChar));
         while (i < s.length() - 1 && Character.isAlphabetic(s.charAt(i+1))) {
             variableName.append(s.charAt(i + 1));
@@ -137,20 +146,22 @@ public class CalculatorEngine {
             numbers.push(variablesMap.get(variableName.toString()).getLeft());
             LOGGER.debug(MessageFormat.format(NUMBER_STACK_PUSH,numbers.peek()));
             i++;
-        } else if (numbers.size() == 1){
+        } else if (numbers.size() == 1 && variableAssignedBalance.intValue() > 0){
             variablesMap.put(variableName.toString(), ImmutablePair.of(numbers.peek(), true));
+            variableAssignedBalance.decrement();
             LOGGER.debug(MessageFormat.format(VARIABLE_ASSIGNED,variableName.toString(),variablesMap.get(variableName.toString()).getLeft()));
         } else {
             variablesMap.put(variableName.toString(), ImmutablePair.of(0L, false));
+            variableAssignedBalance.increment();
             LOGGER.debug(MessageFormat.format(VARIABLE_NOT_ASSIGNED_PUSHED_TO_EXPRESSIONS_STACK,variableName.toString()));
         }
         return i;
     }
 
-    private static int processLetOperator(int i, String s,Stack<Character> operators,Stack<String>expressions, HashMap<String, Pair<Long,Boolean>> variablesMap) {
+    private static int processLetOperator(int i, String s, Stack<Character> operators, Stack<String>expressions, HashMap<String, Pair<Long,Boolean>> variablesMap, MutableInt variableUnnasignedBalance) {
+        variableUnnasignedBalance.increment();
         LOGGER.debug(LET_OPERATOR_TO_ASSIGN_VALUE_TO_VARIABLE_BEGINS);// The let operator is present, a let expression is parsed
         i++;
-        boolean continueFlag = false;
         char calculatorChar = s.charAt(i);
         if (calculatorChar == '(') {
             operators.push(calculatorChar);
@@ -191,9 +202,9 @@ public class CalculatorEngine {
             }
             possibleNumber = possibleNumber * negate;
             variablesMap.put(variableName.toString(), ImmutablePair.of(possibleNumber, true));
+            variableUnnasignedBalance.decrement();
             LOGGER.debug(MessageFormat.format(VARIABLE_ASSIGNED,variableName.toString(),possibleNumber));
             i++;
-            continueFlag = true;
         }else {
             variablesMap.put(variableName.toString(), ImmutablePair.of(0L, false));
             expressions.push(variableName.toString());
