@@ -1,10 +1,12 @@
 package org.juancampos;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.juancampos.enums.Operators;
 
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -15,33 +17,46 @@ import java.util.regex.Pattern;
  * the command at least starts with a valid operation, as a short circuit
  * to not even process something that might be invalid right away.
  */
-public class Validator {
-    public static final Logger logger = Logger.getLogger(Validator.class.getName());
+public class Validator implements IValidator {
+    private static final Logger LOGGER = LogManager.getLogger(Validator.class.getName());
     public static final String VALID_INPUT = "VALID INPUT";
     public static final String INVALID_INPUT_EMPTY_COMMAND = "Invalid Input. Empty command";
     public static final String INVALID_INPUT_MAL_FORMED_PARENTHESIS = "Invalid Input. Mal formed parenthesis";
     public static final int MINIMAL_OPERATION = 6;
+    public static final String SUCCESSFUL_VALIDATION = "Successful validation";
+    public static final String INVALID_FIRST_OPERATION_MUST_BE_ADD_SUB_MULT_DIV_OR_LET = "Invalid First Operation. Must be ADD, SUB, MULT, DIV or LET";
+    public static final String INVALID_CHARACTERS_IN_INPUT = "Invalid characters in input";
+    public static final String INPUT_IS_EMPTY_COMMAND = "Input is empty command";
+    public static final String INPUT_COMMAND_HAS_INVALID_PARENTHESIS = "Input command has invalid parenthesis";
+    public static final String INPUT_COMMAND_HAS_INVALID_FIRST_OPERATION = "Input command has invalid first operation";
+    public static final String INPUT_COMMAND_HAS_INVALID_CHARACTERS = "Input command has invalid characters";
 
     /**
      * Main validator method. It will call subroutines to validate each scenario
      * @param input The command input string to validate.
      * @return A tuple containing the validation result (true or false) and a validation message.
      */
+    @Override
     public Pair<Boolean,String> validate(String input){
-        Pair<Boolean,String> validationResult = Pair.of(true, VALID_INPUT);
+        Pair<Boolean,String> validationResult = ImmutablePair.of(true, VALID_INPUT);
         if (isEmptyCommand(input)){
-            return Pair.of(false, INVALID_INPUT_EMPTY_COMMAND);
+            LOGGER.debug(INPUT_IS_EMPTY_COMMAND);
+            return ImmutablePair.of(false, INVALID_INPUT_EMPTY_COMMAND);
         }
         String trimmedInput = input.trim();
         if (isInvalidParenthesis(trimmedInput)) {
-            return Pair.of(false, INVALID_INPUT_MAL_FORMED_PARENTHESIS);
+            LOGGER.debug(INPUT_COMMAND_HAS_INVALID_PARENTHESIS);
+            return ImmutablePair.of(false, INVALID_INPUT_MAL_FORMED_PARENTHESIS);
         }
         if (isInvalidFirstOperation(trimmedInput)) {
-            return Pair.of(false,"Invalid First Operation. Must be ADD, SUB, MULT, DIV or LET");
+            LOGGER.debug(INPUT_COMMAND_HAS_INVALID_FIRST_OPERATION);
+            return ImmutablePair.of(false, INVALID_FIRST_OPERATION_MUST_BE_ADD_SUB_MULT_DIV_OR_LET);
         }
-        if (invalidCharacters(input)) {
-            return Pair.of(false,"Invalid characters in input");
+        if (invalidCharacters(trimmedInput)) {
+            LOGGER.debug(INPUT_COMMAND_HAS_INVALID_CHARACTERS);
+            return ImmutablePair.of(false, INVALID_CHARACTERS_IN_INPUT);
         }
+        LOGGER.debug(SUCCESSFUL_VALIDATION);
         return validationResult;
     }
 
@@ -60,6 +75,7 @@ public class Validator {
      * @param input The command input string
      * @return True if the input command string contains invalid number of parenthesis
      */
+    @Override
     public boolean isInvalidParenthesis(String input) {
         int balance = 0;
         StringBuilder sbInput = new StringBuilder(input);
@@ -80,6 +96,7 @@ public class Validator {
      * @param input The input command string.
      * @return True of the command starts incorrectly, false otherwise.
      */
+    @Override
     public boolean isInvalidFirstOperation(String input){
 
         if (input.length() < MINIMAL_OPERATION){
@@ -110,6 +127,7 @@ public class Validator {
      * @param input The input command string
      * @return True if there are invalid charactes in the string, false otherwise.
      */
+    @Override
     public boolean invalidCharacters(String input){
         Pattern pattern;
         Matcher matcher;

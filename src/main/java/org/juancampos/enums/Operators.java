@@ -1,19 +1,19 @@
 package org.juancampos.enums;
 
 public enum Operators {
-    ADD("+"),
-    SUB("_"),
-    MULT("*"),
-    DIV("/"),
-    LET("#"),
-    NEGATIVE("-");
+    ADD('+'),
+    SUB('_'),
+    MULT('*'),
+    DIV('/'),
+    LET('#'),
+    NEGATIVE('-');
 
-    private final String symbol;
+    private final char symbol;
 
-    Operators(String symbol) {
+    Operators(char symbol) {
         this.symbol = symbol;
     }
-    public String getSymbol(){
+    public char getSymbol(){
         return symbol;
     }
 }

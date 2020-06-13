@@ -1,13 +1,16 @@
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.juancampos.CalculatorEngine;
+import org.juancampos.IValidator;
 import org.juancampos.Validator;
 import org.juancampos.enums.Operators;
+import org.juancampos.services.LogService;
 import picocli.CommandLine;
 
+import java.text.MessageFormat;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Synopsys Java Candidate Homework
@@ -17,20 +20,23 @@ import java.util.logging.Logger;
  * The application uses log4j2 for logging.
  */
 public class Calculator implements Callable<Long> {
-    public static final String THE_OPERATIONS_COMMAND_IS = "The operations command is: ";
-    public static final String LOGLEVEL = "Loglevel   : ";
-    @CommandLine.Option(names = "-l")
-    List<String> loglevel;
+    public static final String ENTERING_MAIN_ROUTINE_OF_CALCULATOR = "Entering Main Routine of Calculator";
+    public static final String RAW_OPERATIONS_TEXT_FROM_COMMAND_LINE = "Raw operations text from command line = {0}";
+    public static final String CALCULATE_COMMAND_SENT_TO_CALCULATOR = "Calculate command sent to calculator = {0}";
+    public static final String PROCESSED_CALCULATOR_COMMAND = "Processed Calculator Command = {0}";
+
+    @CommandLine.Option(names = {"-l", "--loglevel"}, description = "set the loglevel in the logger.Log levels allowed are ERROR, INFO and DEBUG. Default is set to INFO")
+    String loglevel;
 
     @CommandLine.Parameters
     List<StringBuilder> operations;
 
 
     public static void main(String[] args) {
+        LOGGER.debug(ENTERING_MAIN_ROUTINE_OF_CALCULATOR);
         new CommandLine(new Calculator()).execute(args);
     }
-
-    public static final Logger logger = Logger.getLogger(Calculator.class.getName());
+     private static final Logger LOGGER = LogManager.getLogger(Calculator.class.getName());
 
     /**
      * Picocli overriden method to call the calculation.
@@ -45,17 +51,19 @@ public class Calculator implements Callable<Long> {
      */
     @Override
     public Long call() throws Exception {
-        logger.info(LOGLEVEL + loglevel);
-        Validator validator = new Validator();
+        LogService logService = new LogService();
+        logService.setLogLevel(loglevel);
         String calculateCommand = getCommandString(operations);
+        IValidator validator = new Validator();
         Pair<Boolean, String> validatorResultContainer = validator.validate(calculateCommand);
         long result = 0;
         if(validatorResultContainer.getLeft()){
             result = CalculatorEngine.calculate(calculateCommand);
         } else {
-            logger.log(Level.SEVERE,validatorResultContainer.getRight());
+            LOGGER.info(validatorResultContainer.getRight());
         }
-        System.out.println(result);
+        LOGGER.info("RESULT = " + result);
+        System.out.println("RESULT = " + result);
         return result;
     }
 
@@ -69,22 +77,23 @@ public class Calculator implements Callable<Long> {
      * @return A formatted string.
      */
     String getCommandString(List<StringBuilder> operations) {
+        LOGGER.debug(MessageFormat.format(RAW_OPERATIONS_TEXT_FROM_COMMAND_LINE,operations));
         StringBuilder calculateCommandBuilder = new StringBuilder();
         String calculateCommand = "";
         if (operations != null) {
             for (StringBuilder operation : operations) {
                 calculateCommandBuilder.append(operation);
             }
+            LOGGER.info(MessageFormat.format(CALCULATE_COMMAND_SENT_TO_CALCULATOR,calculateCommandBuilder.toString()));
             calculateCommand = calculateCommandBuilder.toString().toUpperCase();
             calculateCommand = calculateCommand.replaceAll("\\s+","");
-            calculateCommand = calculateCommand.replaceAll("ADD+", Operators.ADD.getSymbol());
-            calculateCommand = calculateCommand.replaceAll("SUB+", Operators.SUB.getSymbol());
-            calculateCommand = calculateCommand.replaceAll("MULT+",Operators.MULT.getSymbol());
-            calculateCommand = calculateCommand.replaceAll("DIV+",Operators.DIV.getSymbol());
-            calculateCommand = calculateCommand.replaceAll("LET+",Operators.LET.getSymbol());
-        }
-
-        logger.info(THE_OPERATIONS_COMMAND_IS + calculateCommand);
+            calculateCommand = calculateCommand.replaceAll("ADD+", String.valueOf(Operators.ADD.getSymbol()));
+            calculateCommand = calculateCommand.replaceAll("SUB+", String.valueOf(Operators.SUB.getSymbol()));
+            calculateCommand = calculateCommand.replaceAll("MULT+",String.valueOf(Operators.MULT.getSymbol()));
+            calculateCommand = calculateCommand.replaceAll("DIV+",String.valueOf(Operators.DIV.getSymbol()));
+            calculateCommand = calculateCommand.replaceAll("LET+",String.valueOf(Operators.LET.getSymbol()));
+           }
+        LOGGER.debug(MessageFormat.format(PROCESSED_CALCULATOR_COMMAND,calculateCommand));
         return calculateCommand;
     }
 }

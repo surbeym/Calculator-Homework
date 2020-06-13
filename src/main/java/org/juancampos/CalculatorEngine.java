@@ -1,18 +1,31 @@
 package org.juancampos;
 
-import org.apache.commons.lang3.tuple.Triple;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.juancampos.enums.Operators;
 
+import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.Stack;
 
 public class CalculatorEngine {
 
-    public static final char PLUS = Operators.ADD.getSymbol().charAt(0);
-    public static final char MINUS = Operators.SUB.getSymbol().charAt(0);
-    public static final char MULTIPLY = Operators.MULT.getSymbol().charAt(0);
-    public static final char DIVIDE = Operators.DIV.getSymbol().charAt(0);
-    public static final char LET_OPERATOR = Operators.LET.getSymbol().charAt(0);
+    public static final char PLUS = Operators.ADD.getSymbol();
+    public static final char MINUS = Operators.SUB.getSymbol();
+    public static final char MULTIPLY = Operators.MULT.getSymbol();
+    public static final char DIVIDE = Operators.DIV.getSymbol();
+    public static final char LET_OPERATOR = Operators.LET.getSymbol();
+    public static final Logger LOGGER = LogManager.getLogger(CalculatorEngine.class.getName());
+    public static final String INVALID_ARGUMENT_FOR_CALCULATOR = "INVALID ARGUMENT FOR CALCULATOR";
+    public static final String INPUT_STRING_IS_EMPTY = "Input string is empty";
+    public static final String LET_OPERATOR_TO_ASSIGN_VALUE_TO_VARIABLE_BEGINS = "LET operator to assign value to variable begins";
+    public static final String VARIABLE_NAME = "Variable name = {0}";
+    public static final String VARIABLE_NOT_ASSIGNED_PUSHED_TO_EXPRESSIONS_STACK = "Variable {0} not assigned. Pushed to expressions stack";
+    public static final String VARIABLE_ASSIGNED = "Variable assigned. {0} = {1}";
+    public static final String NUMBER_STACK_PUSH = "Number stack push = {0}";
+    public static final String OPERATORS_STACK_PUSH = "Operators Stack Push: {0}";
 
     /**
      * Calculate function.
@@ -21,7 +34,7 @@ public class CalculatorEngine {
      * a stack is used to find the value for each sub-expression within a parenthesis.
      * The main expression needs to be delayed until the interim sub-expressions within parenthesis
      * are evaluated and a stack is used to introduce this delay, we use a stack.
-     * There is also a precence to the operations namely that multiplication and division happen first.
+     * There is also a precedence to the operations namely that multiplication and division happen first.
      * The terms presented here have a variation in that the operation is all enclosed in parenthesis.
      * So working right to left will produce the correct result when greedely solving for multiplication
      * and division first.
@@ -35,11 +48,14 @@ public class CalculatorEngine {
      * @return The result from the calculation.
      */
     public static long calculate(String s) {
-        if (s == null || s.length() == 0) return 0;
+        if (s == null || s.length() == 0) {
+            LOGGER.debug(INPUT_STRING_IS_EMPTY);
+            return 0;
+        }
         Stack<Long> numbers = new Stack<>(); // the stack that stores numbers to be operated on
         Stack<Character> operators = new Stack<>();// the stack that holds the operators
         Stack<String> expressions = new Stack<>();//the stack to hold the expressions
-        HashMap<String, Triple<Long,Boolean,String>> variablesMap = new HashMap<>(); //The map containing variables with corresponding values.
+        HashMap<String, Pair<Long,Boolean>> variablesMap = new HashMap<>(); //The map containing variables with corresponding values.
         long currentNumber;
         int negate = 1;
         for (int i = 0; i < s.length(); i++) {
@@ -51,11 +67,13 @@ public class CalculatorEngine {
                 negate = -1;
                 continue;
             }
-            if (calculatorChar == LET_OPERATOR) { // The let operator is present, a let expression is parsed
+            if (calculatorChar == LET_OPERATOR) {
+                LOGGER.debug(LET_OPERATOR_TO_ASSIGN_VALUE_TO_VARIABLE_BEGINS);// The let operator is present, a let expression is parsed
                 i++;
                 calculatorChar = s.charAt(i);
                 if (calculatorChar == '(') {
                     operators.push(calculatorChar);
+                    LOGGER.debug(MessageFormat.format(OPERATORS_STACK_PUSH,operators.peek()));
                     i++;
                     calculatorChar = s.charAt(i);
                 }
@@ -66,10 +84,12 @@ public class CalculatorEngine {
                         i++;
                     }
                 }
+                LOGGER.debug(MessageFormat.format(VARIABLE_NAME,variableName.toString()));
                 i++;
                 calculatorChar = s.charAt(i);
-                if (calculatorChar != ','){ // A variable name must be immediately followed by a comma to specify the value expression
-                    throw new CalculatorException("INVALID ARGUMENT FOR CALCULATOR");
+                if (calculatorChar != ','){
+                    LOGGER.error(INVALID_ARGUMENT_FOR_CALCULATOR);// A variable name must be immediately followed by a comma to specify the value expression
+                    throw new CalculatorException(INVALID_ARGUMENT_FOR_CALCULATOR);
                 } else {
                     i++;
                     calculatorChar = s.charAt(i);
@@ -88,12 +108,14 @@ public class CalculatorEngine {
                     }
                     possibleNumber = possibleNumber * negate;
                     negate = 1;
-                    variablesMap.put(variableName.toString(), Triple.of(possibleNumber, true, ""));
+                    variablesMap.put(variableName.toString(), ImmutablePair.of(possibleNumber, true));
+                    LOGGER.debug(MessageFormat.format(VARIABLE_ASSIGNED,variableName.toString(),possibleNumber));
                     i++;
                     continue;
                 }
-                variablesMap.put(variableName.toString(), Triple.of(0L, false, ""));
+                variablesMap.put(variableName.toString(), ImmutablePair.of(0L, false));
                 expressions.push(variableName.toString());
+                LOGGER.debug(MessageFormat.format(VARIABLE_NOT_ASSIGNED_PUSHED_TO_EXPRESSIONS_STACK,variableName.toString()));
             }
 
             if (Character.isAlphabetic(calculatorChar)){ //If the variable name is present, is possible to resolve it
@@ -102,14 +124,17 @@ public class CalculatorEngine {
                     variableName.append(s.charAt(i + 1));
                     i++;
                 }
-                if (variablesMap.containsKey(variableName.toString()) && variablesMap.get(variableName.toString()).getMiddle()){
+                if (variablesMap.containsKey(variableName.toString()) && variablesMap.get(variableName.toString()).getRight()){
                     numbers.push(variablesMap.get(variableName.toString()).getLeft());
+                    LOGGER.debug(MessageFormat.format(NUMBER_STACK_PUSH,numbers.peek()));
                     i++;
                     calculatorChar = s.charAt(i);
                 } else if (numbers.size() == 1){
-                    variablesMap.put(variableName.toString(), Triple.of(numbers.peek(), true, ""));
+                    variablesMap.put(variableName.toString(), ImmutablePair.of(numbers.peek(), true));
+                    LOGGER.debug(MessageFormat.format(VARIABLE_ASSIGNED,variableName.toString(),variablesMap.get(variableName.toString()).getLeft()));
                 } else {
-                    variablesMap.put(variableName.toString(), Triple.of(0L, false, ""));
+                    variablesMap.put(variableName.toString(), ImmutablePair.of(0L, false));
+                    LOGGER.debug(MessageFormat.format(VARIABLE_NOT_ASSIGNED_PUSHED_TO_EXPRESSIONS_STACK,variableName.toString()));
                 }
             }
 
@@ -124,8 +149,10 @@ public class CalculatorEngine {
                 currentNumber = currentNumber * negate;
                 negate = 1;
                 numbers.push(currentNumber);
+                LOGGER.debug(MessageFormat.format(NUMBER_STACK_PUSH,numbers.peek()));
             } else if (calculatorChar == '(') {
                 operators.push(calculatorChar);
+                LOGGER.debug(MessageFormat.format(OPERATORS_STACK_PUSH,operators.peek()));
             } else if (calculatorChar == ')') {
                 // keep going when we encounter a ')' until we find the opening parenthesis
                 if (numbers.size() > 1) {
@@ -133,25 +160,35 @@ public class CalculatorEngine {
                         operators.pop(); //get rid of the '('
                     }
                     if (!operators.isEmpty()) {
-                        numbers.push(operation(operators.pop(), numbers.pop(), numbers.pop()));
+                        long operation = operation(operators.pop(), numbers.pop(), numbers.pop());
+                        numbers.push(operation);
+                        LOGGER.debug(MessageFormat.format("Operation result = {0} was pushed to numbers stack",numbers.peek()));
                         if (numbers.size() == 1 && !expressions.isEmpty()) {
-                            variablesMap.put(expressions.pop(), Triple.of(numbers.peek(), true, ""));
+                            String pop = expressions.pop();
+                            variablesMap.put(pop, ImmutablePair.of(numbers.peek(), true));
+                            LOGGER.debug(MessageFormat.format("Since only one number left in stack, the value {0} is a result that can be assigned to variable name{1}",numbers.peek(),pop ));
                         }
                     }
                 }
 
             } else if (calculatorChar == PLUS || calculatorChar == MINUS || calculatorChar == MULTIPLY || calculatorChar == DIVIDE) {
-                while (!operators.isEmpty() && precedence(calculatorChar, operators.peek())) numbers.push(operation(operators.pop(), numbers.pop(),numbers.pop()));
+                while (!operators.isEmpty() && precedence(calculatorChar, operators.peek())) {
+                    numbers.push(operation(operators.pop(), numbers.pop(), numbers.pop()));
+                    LOGGER.debug(MessageFormat.format(NUMBER_STACK_PUSH,numbers.peek()));
+                }
                 operators.push(calculatorChar);
+                LOGGER.debug(MessageFormat.format(OPERATORS_STACK_PUSH,operators.peek()));
             }
         }
         while (numbers.size() > 1 && !operators.isEmpty()) {
             numbers.push(operation(operators.pop(), numbers.pop(), numbers.pop()));
+            LOGGER.debug(MessageFormat.format(NUMBER_STACK_PUSH,numbers.peek()));
         }
         return numbers.pop();
     }
 
     private static long operation(char operation, long secondOperand, long firstOperand) {
+        LOGGER.debug(MessageFormat.format("OPERATION:{0}, FIRST OPERAND:{1}, SECOND OPERAND:{2}", operation, firstOperand,secondOperand));
         switch (operation) {
             case '+': return firstOperand + secondOperand;
             case '_': return firstOperand - secondOperand;
