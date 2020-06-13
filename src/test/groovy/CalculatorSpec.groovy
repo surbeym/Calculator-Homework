@@ -29,6 +29,7 @@ class CalculatorSpec extends Specification {
         actualResult == expectedResult
         where:
         inputOperations                                                 | expectedResult
+        [new StringBuilder("sub!@(5, mult(-2, 3))")]as List<StringBuilder> | 0
         [new StringBuilder("sub(5, mult(-2, 3))")]as List<StringBuilder> | 11
         [new StringBuilder("add(1, mult(2, 3))")]as List<StringBuilder> | 7
         [new StringBuilder("mult(add(2, 2), div(9, 3))")]as List<StringBuilder> | 12
