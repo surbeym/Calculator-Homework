@@ -11,7 +11,7 @@ import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.Stack;
 
-public class CalculatorEngine {
+public class CalculatorEngine implements ICalculatorEngine{
 
     public static final char PLUS = Operators.ADD.getSymbol();
     public static final char MINUS = Operators.SUB.getSymbol();
@@ -28,6 +28,22 @@ public class CalculatorEngine {
     public static final String NUMBER_STACK_PUSH = "Number stack push = {0}";
     public static final String OPERATORS_STACK_PUSH = "Operators Stack Push: {0}";
     public static final String MISSING_VARIABLES_NOT_ASSIGNED = "Missing Variables Not assigned";
+
+    private CalculatorEngine()
+    {
+        // private constructor
+    }
+
+    // Inner class to provide instance of class
+    private static class CalculatorEngineSinglenton
+    {
+        private static final ICalculatorEngine INSTANCE = new CalculatorEngine();
+    }
+
+    public static ICalculatorEngine getInstance()
+    {
+        return CalculatorEngineSinglenton.INSTANCE;
+    }
 
     /**
      * Calculate function.
@@ -49,7 +65,8 @@ public class CalculatorEngine {
      * @param s Input string
      * @return The result from the calculation.
      */
-    public static long calculate(String s) {
+    @Override
+    public long calculate(String s) {
         if (s == null || s.length() == 0) {
             LOGGER.debug(INPUT_STRING_IS_EMPTY);
             return 0;
@@ -136,7 +153,7 @@ public class CalculatorEngine {
         return numbers.pop();
     }
 
-    protected static int resolveVariableName(String s, Stack<Long> numbers, HashMap<String, Pair<Long, Boolean>> variablesMap, int i, char calculatorChar, MutableInt variableAssignedBalance) {
+    protected int resolveVariableName(String s, Stack<Long> numbers, HashMap<String, Pair<Long, Boolean>> variablesMap, int i, char calculatorChar, MutableInt variableAssignedBalance) {
         StringBuilder variableName = new StringBuilder(String.valueOf(calculatorChar));
         while (i < s.length() - 1 && Character.isAlphabetic(s.charAt(i+1))) {
             variableName.append(s.charAt(i + 1));
@@ -158,7 +175,7 @@ public class CalculatorEngine {
         return i;
     }
 
-    private static int processLetOperator(int i, String s, Stack<Character> operators, Stack<String>expressions, HashMap<String, Pair<Long,Boolean>> variablesMap, MutableInt variableUnnasignedBalance) {
+    private int processLetOperator(int i, String s, Stack<Character> operators, Stack<String>expressions, HashMap<String, Pair<Long,Boolean>> variablesMap, MutableInt variableUnnasignedBalance) {
         variableUnnasignedBalance.increment();
         LOGGER.debug(LET_OPERATOR_TO_ASSIGN_VALUE_TO_VARIABLE_BEGINS);// The let operator is present, a let expression is parsed
         i++;
@@ -214,7 +231,7 @@ public class CalculatorEngine {
         return i;
     }
 
-    private static long operation(char operation, long secondOperand, long firstOperand) {
+    private long operation(char operation, long secondOperand, long firstOperand) {
         LOGGER.debug(MessageFormat.format("OPERATION:{0}, FIRST OPERAND:{1}, SECOND OPERAND:{2}", operation, firstOperand,secondOperand));
         switch (operation) {
             case '+': return firstOperand + secondOperand;
@@ -232,7 +249,7 @@ public class CalculatorEngine {
      * @param operator2 Second operator to compare
      * @return true if the operator 1 has precedence , otherwise
      */
-    private static boolean precedence(char operator1, char operator2) {
+    private boolean precedence(char operator1, char operator2) {
         if (operator2 == '(' || operator2 == ')') return false;
         return (operator1 != '*' && operator1 != '/') || (operator2 != '+' && operator2 != '_');
     }

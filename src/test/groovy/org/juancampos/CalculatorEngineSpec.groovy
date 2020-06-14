@@ -14,9 +14,9 @@ class CalculatorEngineSpec extends Specification {
         final String variableName = "BAR"
         if (variableName == inputString)
             variablesMap = mapValues
-
+        ICalculatorEngine calculatorEngine = CalculatorEngine.getInstance()
         when:"The calculator engine resolve variable name method is called"
-        def actualCounter = CalculatorEngine.resolveVariableName(inputString,numberStack,variablesMap,0 as int ,inputCharacter as char,new MutableInt(0))
+        def actualCounter = calculatorEngine.resolveVariableName(inputString,numberStack,variablesMap,0 as int ,inputCharacter as char,new MutableInt(0))
         then: "The counter and variablesMap sizes are as expected"
         actualCounter == expectedCounter
         variablesMap.size() == expectedMapSize

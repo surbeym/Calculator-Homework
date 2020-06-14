@@ -2,6 +2,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.juancampos.CalculatorEngine;
+import org.juancampos.ICalculatorEngine;
 import org.juancampos.IValidator;
 import org.juancampos.Validator;
 import org.juancampos.enums.Operators;
@@ -58,7 +59,8 @@ public class Calculator implements Callable<Long> {
         Pair<Boolean, String> validatorResultContainer = validator.validate(calculateCommand);
         long result = 0;
         if(validatorResultContainer.getLeft()){
-            result = CalculatorEngine.calculate(calculateCommand);
+            ICalculatorEngine calculatorEngine = CalculatorEngine.getInstance();
+            result = calculatorEngine.calculate(calculateCommand);
         } else {
             LOGGER.info(validatorResultContainer.getRight());
         }
