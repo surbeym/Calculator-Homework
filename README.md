@@ -3,7 +3,7 @@
 
 This is my implementation for the simple command line calculator.
 ## Assignment
-####Functional Requirements
+#### Functional Requirements
 Write a calculator program in Java that evaluates expressions in a very simple integer expression language. 
 The program takes an input on the command line, computes the result, and prints it to the console.  For example:
 
@@ -29,11 +29,11 @@ An expression is one of the following:
     - let(<variable name>, <value expression>, <expression where variable is used>)
     - As with arithmetic functions, the value expression and the expression where the variable is used may be an arbitrary expression from this list. 
 
-####Logging
+#### Logging
 Implement a logging layer to log all relevant information. Manage at least 3 levels of verbosity: INFO, ERROR, and DEBUG.  Allow verbosity to be set via a command-line option.
 Build
 
-####Build
+#### Build
 Create a Maven or Gradle build definition so your project may be built in any standard Java environment.
 
 
@@ -189,7 +189,7 @@ The application contains  help option. If the command line jar executable is cal
 The command must be contained within quotes. For example:
 ``"ADD(1,1)"``.
 
-####Logging Options
+#### Logging Options
 The command line accepts 3 logging options, which can be defined using:
 ```-l``` or ```--loglevel```  
 The options are:  
