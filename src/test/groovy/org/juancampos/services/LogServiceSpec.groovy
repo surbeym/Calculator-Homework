@@ -17,13 +17,15 @@ class LogServiceSpec extends Specification {
         actual == log4j2level
         where:"Parameterized values for the test"
         inputLevel    | log4j2level
-        null          | Level.INFO
-        ""            | Level.INFO
-        "   "         | Level.INFO
+        null          | Level.ERROR
+        ""            | Level.ERROR
+        "   "         | Level.ERROR
         "debug"       | Level.DEBUG
         "DEBUG"       | Level.DEBUG
+        "info"        | Level.INFO
+        "INFO"        | Level.INFO
         "eRRoR"       | Level.ERROR
-        "WARN"        | Level.INFO
+        "WARN"        | Level.ERROR
     }
 
     @Unroll
@@ -36,13 +38,14 @@ class LogServiceSpec extends Specification {
          1* logService.getLogLevel(inputLevel) >> log4j2level
         where:"Parameterized values for the test"
         inputLevel    | log4j2level
-        null          | Level.INFO
-        ""            | Level.INFO
-        "   "         | Level.INFO
+        null          | Level.ERROR
+        ""            | Level.ERROR
+        "   "         | Level.ERROR
         "debug"       | Level.DEBUG
         "DEBUG"       | Level.DEBUG
         "eRRoR"       | Level.ERROR
-        "WARN"        | Level.INFO
+        "INFO"        | Level.INFO
+        "WARN"        | Level.ERROR
     }
 
 }

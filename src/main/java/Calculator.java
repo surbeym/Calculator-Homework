@@ -1,11 +1,12 @@
-import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.juancampos.CalculatorEngine;
-import org.juancampos.ICalculatorEngine;
-import org.juancampos.IValidator;
-import org.juancampos.Validator;
+import org.juancampos.services.CalculatorService;
+import org.juancampos.services.ICalculatorService;
+import org.juancampos.services.IValidatorService;
+import org.juancampos.services.ValidatorService;
 import org.juancampos.enums.Operators;
+import org.juancampos.services.ILogService;
 import org.juancampos.services.LogService;
 import picocli.CommandLine;
 
@@ -29,7 +30,7 @@ public class Calculator implements Callable<Long> {
     @CommandLine.Option(names = {"-l", "--loglevel"}, description = "set the loglevel in the logger.Log levels allowed are ERROR, INFO and DEBUG. Default is set to INFO")
     String loglevel;
 
-    @CommandLine.Parameters
+    @CommandLine.Parameters (description = "The command for the calculator. The command is accepted if it's in quotes. A valid command is \"add(1,2)\"")
     List<StringBuilder> operations;
 
 
@@ -52,20 +53,22 @@ public class Calculator implements Callable<Long> {
      */
     @Override
     public Long call() throws Exception {
-        LogService logService = new LogService();
+        ILogService logService = LogService.getInstance();
         logService.setLogLevel(loglevel);
+        IValidatorService validator = ValidatorService.getInstance();
         String calculateCommand = getCommandString(operations);
-        IValidator validator = new Validator();
-        Pair<Boolean, String> validatorResultContainer = validator.validate(calculateCommand);
+        boolean validCharactersCommand = validator.validateCharacters(calculateCommand);
         long result = 0;
-        if(validatorResultContainer.getLeft()){
-            ICalculatorEngine calculatorEngine = CalculatorEngine.getInstance();
-            result = calculatorEngine.calculate(calculateCommand);
-        } else {
-            LOGGER.info(validatorResultContainer.getRight());
+        if (validCharactersCommand){
+            calculateCommand = substituteOperators(calculateCommand);
+            boolean validatorResultContainer = validator.validate(calculateCommand);
+            if(validatorResultContainer) {
+                ICalculatorService calculatorEngine = CalculatorService.getInstance();
+                result = calculatorEngine.calculate(calculateCommand);
+            }
+            LOGGER.info("RESULT = " + result);
+            System.out.println("RESULT = " + result);
         }
-        LOGGER.info("RESULT = " + result);
-        System.out.println("RESULT = " + result);
         return result;
     }
 
@@ -86,16 +89,22 @@ public class Calculator implements Callable<Long> {
             for (StringBuilder operation : operations) {
                 calculateCommandBuilder.append(operation);
             }
-            LOGGER.info(MessageFormat.format(CALCULATE_COMMAND_SENT_TO_CALCULATOR,calculateCommandBuilder.toString()));
+            LOGGER.info(MessageFormat.format(CALCULATE_COMMAND_SENT_TO_CALCULATOR, calculateCommandBuilder.toString()));
             calculateCommand = calculateCommandBuilder.toString().toUpperCase();
-            calculateCommand = calculateCommand.replaceAll("\\s+","");
+            calculateCommand = calculateCommand.replaceAll("\\s+", "");
+        }
+        LOGGER.debug(MessageFormat.format(PROCESSED_CALCULATOR_COMMAND,calculateCommand));
+        return calculateCommand;
+    }
+
+    protected String substituteOperators(String calculateCommand) {
+        if (StringUtils.isNotEmpty(calculateCommand)) {
             calculateCommand = calculateCommand.replaceAll("ADD+", String.valueOf(Operators.ADD.getSymbol()));
             calculateCommand = calculateCommand.replaceAll("SUB+", String.valueOf(Operators.SUB.getSymbol()));
-            calculateCommand = calculateCommand.replaceAll("MULT+",String.valueOf(Operators.MULT.getSymbol()));
-            calculateCommand = calculateCommand.replaceAll("DIV+",String.valueOf(Operators.DIV.getSymbol()));
-            calculateCommand = calculateCommand.replaceAll("LET+",String.valueOf(Operators.LET.getSymbol()));
-           }
-        LOGGER.debug(MessageFormat.format(PROCESSED_CALCULATOR_COMMAND,calculateCommand));
+            calculateCommand = calculateCommand.replaceAll("MULT+", String.valueOf(Operators.MULT.getSymbol()));
+            calculateCommand = calculateCommand.replaceAll("DIV+", String.valueOf(Operators.DIV.getSymbol()));
+            calculateCommand = calculateCommand.replaceAll("LET+", String.valueOf(Operators.LET.getSymbol()));
+        }
         return calculateCommand;
     }
 }

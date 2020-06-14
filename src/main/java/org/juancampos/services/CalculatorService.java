@@ -1,24 +1,25 @@
-package org.juancampos;
+package org.juancampos.services;
 
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.juancampos.exceptions.CalculatorException;
 import org.juancampos.enums.Operators;
 
 import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.Stack;
 
-public class CalculatorEngine implements ICalculatorEngine{
+public class CalculatorService implements ICalculatorService {
 
     public static final char PLUS = Operators.ADD.getSymbol();
     public static final char MINUS = Operators.SUB.getSymbol();
     public static final char MULTIPLY = Operators.MULT.getSymbol();
     public static final char DIVIDE = Operators.DIV.getSymbol();
     public static final char LET_OPERATOR = Operators.LET.getSymbol();
-    public static final Logger LOGGER = LogManager.getLogger(CalculatorEngine.class.getName());
+    public static final Logger LOGGER = LogManager.getLogger(CalculatorService.class.getName());
     public static final String INVALID_ARGUMENT_FOR_CALCULATOR = "INVALID ARGUMENT FOR CALCULATOR";
     public static final String INPUT_STRING_IS_EMPTY = "Input string is empty";
     public static final String LET_OPERATOR_TO_ASSIGN_VALUE_TO_VARIABLE_BEGINS = "LET operator to assign value to variable begins";
@@ -29,7 +30,7 @@ public class CalculatorEngine implements ICalculatorEngine{
     public static final String OPERATORS_STACK_PUSH = "Operators Stack Push: {0}";
     public static final String MISSING_VARIABLES_NOT_ASSIGNED = "Missing Variables Not assigned";
 
-    private CalculatorEngine()
+    private CalculatorService()
     {
         // private constructor
     }
@@ -37,10 +38,10 @@ public class CalculatorEngine implements ICalculatorEngine{
     // Inner class to provide instance of class
     private static class CalculatorEngineSinglenton
     {
-        private static final ICalculatorEngine INSTANCE = new CalculatorEngine();
+        private static final ICalculatorService INSTANCE = new CalculatorService();
     }
 
-    public static ICalculatorEngine getInstance()
+    public static ICalculatorService getInstance()
     {
         return CalculatorEngineSinglenton.INSTANCE;
     }
@@ -74,55 +75,70 @@ public class CalculatorEngine implements ICalculatorEngine{
         Stack<Long> numbers = new Stack<>(); // the stack that stores numbers to be operated on
         Stack<Character> operators = new Stack<>();// the stack that holds the operators
         Stack<String> expressions = new Stack<>();//the stack to hold the expressions
-        HashMap<String, Pair<Long,Boolean>> variablesMap = new HashMap<>();
-        MutableInt variablesAssignedBal = new MutableInt(0);//map containing variables with corresponding values.
+        HashMap<String, Pair<Long,Boolean>> variablesMap = new HashMap<>(); //variables map to store values
+        MutableInt variablesAssignedBalance = new MutableInt(0); //Checks the variables have been assigned
+        MutableInt letParenthesis = new MutableInt(0); //counter for the number of parenthesis to be inside a LET operator
+        boolean openLet = false;// flag to check process is inside a LET operator
         long currentNumber;
         int negate = 1;
         for (int i = 0; i < s.length(); i++) {
             char calculatorChar = s.charAt(i);
-            if (calculatorChar == ','){
+            if (calculatorChar == ','){//commas are skipped as they are not operators
                 continue;
             }
-            if (calculatorChar == '-'){
+            if (calculatorChar == '-'){//a negative number can be presented
                 negate = -1;
                 continue;
             }
-            if (calculatorChar == LET_OPERATOR) {  //If the operator is a let operator, process to resolve the variable name
-               i = processLetOperator(i,s,operators,expressions,variablesMap,variablesAssignedBal);
+            if (calculatorChar == LET_OPERATOR) {  //If the operator is a LET operator, process to resolve the variable name
+                if (i > 1 )openLet =  true; //if the first operation is a LET operator, the flag is not set so the closing parenthesis can start the operations process
+               i = processLetOperator(i,s,operators,expressions,variablesMap,variablesAssignedBalance,letParenthesis);
               continue;
             }
 
             if (Character.isAlphabetic(calculatorChar)){ //If the variable name is present, is possible to resolve it. Move the counter accordingly
-                i = resolveVariableName(s, numbers, variablesMap, i, calculatorChar,variablesAssignedBal);
+                i = resolveVariableName(s, numbers, variablesMap, i, calculatorChar,variablesAssignedBalance);
                 calculatorChar = s.charAt(i);
             }
 
 
-            if (Character.isDigit(calculatorChar)) {
+            if (Character.isDigit(calculatorChar)) { //If a number appears it gets pushed to the stack of numbers to process
                 currentNumber = calculatorChar - '0';
                 // iteratively calculate each number
                 while (i < s.length() - 1 && Character.isDigit(s.charAt(i+1))) {
                     currentNumber = currentNumber * 10 + (s.charAt(i+1) - '0');
                     i++;
                 }
-                currentNumber = currentNumber * negate;
+                currentNumber = currentNumber * negate;//if there was a - before the digit, it will become negative number
                 negate = 1;
                 numbers.push(currentNumber);
                 LOGGER.debug(MessageFormat.format(NUMBER_STACK_PUSH,numbers.peek()));
             } else if (calculatorChar == '(') {
+                if (openLet){   //if inside a LET operation, increase the count of internal LET parenthesis
+                    letParenthesis.increment();
+                }
                 operators.push(calculatorChar);
                 LOGGER.debug(MessageFormat.format(OPERATORS_STACK_PUSH,operators.peek()));
             } else if (calculatorChar == ')') {
-                // keep going when we encounter a ')' until we find the opening parenthesis
+                //If LET operation is open, skip closing parenthesis until it hits closing LET parenthesis
+                if (openLet){
+                    if (letParenthesis.decrementAndGet() == 0){
+                        openLet = false;
+                        continue;
+                    } else if(letParenthesis.intValue() > 1 && variablesAssignedBalance.intValue() == 0){
+                        continue;  //If LET operation has resolved all variable names, go back to beginning of loop to continue calculations
+                    }
+                }
+                // keep going when we encounter a ')' until we find the opening parenthesis in operator stack
                 if (numbers.size() > 1) {
                     while (numbers.size() > 1 && !operators.isEmpty() && operators.peek() == '(') {
                         operators.pop(); //get rid of the '('
                     }
-                    if (!operators.isEmpty()) {
+                    if (!operators.isEmpty()) { //find the operator to execute with operands
                         long operation = operation(operators.pop(), numbers.pop(), numbers.pop());
-                        numbers.push(operation);
+                        numbers.push(operation); //push result of collapsed operation
                         LOGGER.debug(MessageFormat.format("Operation result = {0} was pushed to numbers stack",numbers.peek()));
-                        if (numbers.size() == 1 && !expressions.isEmpty()) {
+                        if (numbers.size() == 1 && !expressions.isEmpty()) { //the expression at top of stack will be the variable name that needs value assigned.
                             String pop = expressions.pop();
                             variablesMap.put(pop, ImmutablePair.of(numbers.peek(), true));
                             LOGGER.debug(MessageFormat.format("Since only one number left in stack, the value {0} is a result that can be assigned to variable name{1}",numbers.peek(),pop ));
@@ -131,33 +147,49 @@ public class CalculatorEngine implements ICalculatorEngine{
                 }
 
             } else if (calculatorChar == PLUS || calculatorChar == MINUS || calculatorChar == MULTIPLY || calculatorChar == DIVIDE) {
-                while (!operators.isEmpty() && precedence(calculatorChar, operators.peek())) {
-                    numbers.push(operation(operators.pop(), numbers.pop(), numbers.pop()));
+                while (!operators.isEmpty() && precedence(calculatorChar, operators.peek())) { //operations have precedence. We loop through the operations in the stack until we find
+                    numbers.push(operation(operators.pop(), numbers.pop(), numbers.pop()));    //an operation in the stack that takes precedence over the current operation character to make sure its resolved before the current operation which is outside current parenthesis.
                     LOGGER.debug(MessageFormat.format(NUMBER_STACK_PUSH,numbers.peek()));
                 }
                 operators.push(calculatorChar);
                 LOGGER.debug(MessageFormat.format(OPERATORS_STACK_PUSH,operators.peek()));
             }
         }
-        for (Pair<Long,Boolean> variableName:variablesMap.values()){
+        for (Pair<Long,Boolean> variableName:variablesMap.values()){  //If at the end of the operations we still have unnasigned variables, its an issue.
             if (Boolean.FALSE.equals(variableName.getRight())) {
                 LOGGER.error(MISSING_VARIABLES_NOT_ASSIGNED);
                 throw new CalculatorException(MISSING_VARIABLES_NOT_ASSIGNED);
             }
 
         }
-        while (numbers.size() > 1 && !operators.isEmpty()) {
+        while (numbers.size() > 1 && !operators.isEmpty()) { //resolve all remaining operations.
             numbers.push(operation(operators.pop(), numbers.pop(), numbers.pop()));
             LOGGER.debug(MessageFormat.format(NUMBER_STACK_PUSH,numbers.peek()));
         }
-        return numbers.pop();
+        return numbers.pop();  //last calculated number in stack is the result.
     }
 
+    /**
+     * Resolve a variable name. If a variable name is present, check that it has a value assigned an if so add the number to the numbers stack to
+     * have the operation executed
+     * @param s Input string
+     * @param numbers Numbers stack
+     * @param variablesMap Variables mao to find if current value for variable name exists.
+     * @param i Current character counter
+     * @param calculatorChar The current char of the input string.
+     * @param variableAssignedBalance The counter to make sure all variables are assigned.
+     * @return The current position in the command string.
+     */
     protected int resolveVariableName(String s, Stack<Long> numbers, HashMap<String, Pair<Long, Boolean>> variablesMap, int i, char calculatorChar, MutableInt variableAssignedBalance) {
         StringBuilder variableName = new StringBuilder(String.valueOf(calculatorChar));
         while (i < s.length() - 1 && Character.isAlphabetic(s.charAt(i+1))) {
             variableName.append(s.charAt(i + 1));
             i++;
+        }
+        if ( s.length() > i+1 && !(s.charAt(i+1) == ',' || s.charAt(i+1) == ')'))
+        {
+            LOGGER.error(INVALID_ARGUMENT_FOR_CALCULATOR);
+            throw new CalculatorException(INVALID_ARGUMENT_FOR_CALCULATOR);
         }
         if (variablesMap.containsKey(variableName.toString()) && variablesMap.get(variableName.toString()).getRight()){
             numbers.push(variablesMap.get(variableName.toString()).getLeft());
@@ -175,19 +207,31 @@ public class CalculatorEngine implements ICalculatorEngine{
         return i;
     }
 
-    private int processLetOperator(int i, String s, Stack<Character> operators, Stack<String>expressions, HashMap<String, Pair<Long,Boolean>> variablesMap, MutableInt variableUnnasignedBalance) {
+    /**
+     * Process the LET operator. This will create the variable name, and if the LET expression has a value assigned to it immediately (without intermediate operations) it will assign it
+     * @param i The current string character position
+     * @param s The input string
+     * @param operators The operators stack to push any operators in the let expression
+     * @param expressions The expressions stack to store the variable name to resolve
+     * @param variablesMap The variables map to store variable names and possible values
+     * @param variableUnnasignedBalance The counter to check all variable names have been assigned
+     * @param letParenthesis The parenthesis counter for internal let operations
+     * @return The position of the string to continue parsing.
+     */
+    private int processLetOperator(int i, String s, Stack<Character> operators, Stack<String>expressions, HashMap<String, Pair<Long,Boolean>> variablesMap, MutableInt variableUnnasignedBalance,MutableInt letParenthesis) {
         variableUnnasignedBalance.increment();
-        LOGGER.debug(LET_OPERATOR_TO_ASSIGN_VALUE_TO_VARIABLE_BEGINS);// The let operator is present, a let expression is parsed
+        LOGGER.debug(LET_OPERATOR_TO_ASSIGN_VALUE_TO_VARIABLE_BEGINS);// The LET operator is present, a LET expression is parsed
         i++;
         char calculatorChar = s.charAt(i);
         if (calculatorChar == '(') {
+            letParenthesis.increment();
             operators.push(calculatorChar);
             LOGGER.debug(MessageFormat.format(OPERATORS_STACK_PUSH,operators.peek()));
             i++;
             calculatorChar = s.charAt(i);
         }
         StringBuilder variableName = new StringBuilder(String.valueOf(calculatorChar));
-        if (Character.isAlphabetic(calculatorChar)){
+        if (Character.isAlphabetic(calculatorChar)){ //Build the variable name. Only alphabetic characters are allowed. It will cut off the variable name on the first non-alphabetic character
             while (i < s.length() - 1 && Character.isAlphabetic(s.charAt(i+1))) {
                 variableName.append(s.charAt(i + 1));
                 i++;
@@ -203,7 +247,7 @@ public class CalculatorEngine implements ICalculatorEngine{
             i++;
             calculatorChar = s.charAt(i);
         }
-        int negate = 1;
+        int negate = 1; //Check to see if its a negative number
         if (calculatorChar == '-'){
             negate = -1;
             i++;
@@ -219,7 +263,7 @@ public class CalculatorEngine implements ICalculatorEngine{
             }
             possibleNumber = possibleNumber * negate;
             variablesMap.put(variableName.toString(), ImmutablePair.of(possibleNumber, true));
-            variableUnnasignedBalance.decrement();
+            variableUnnasignedBalance.decrement();  //variable names balance decrements since variable has value assigned
             LOGGER.debug(MessageFormat.format(VARIABLE_ASSIGNED,variableName.toString(),possibleNumber));
             i++;
         }else {
@@ -231,7 +275,16 @@ public class CalculatorEngine implements ICalculatorEngine{
         return i;
     }
 
-    private long operation(char operation, long secondOperand, long firstOperand) {
+    /**
+     * Execute the operation.
+     * A division will only result in using Javas default of rounding down to zero.
+     * Any arithmetic exception will be allowed to float up to main method
+     * @param operation  Operation to execute
+     * @param secondOperand Second operand
+     * @param firstOperand First operand
+     * @return the result of the operation.
+     */
+    protected long operation(char operation, long secondOperand, long firstOperand) {
         LOGGER.debug(MessageFormat.format("OPERATION:{0}, FIRST OPERAND:{1}, SECOND OPERAND:{2}", operation, firstOperand,secondOperand));
         switch (operation) {
             case '+': return firstOperand + secondOperand;
@@ -244,12 +297,14 @@ public class CalculatorEngine implements ICalculatorEngine{
     // helper function to check precedence of current operator and the uppermost operator in the ops stack
 
     /**
-     * Method to verify the precedence of current operator the the uppermost operator in the operations stack
+     * Method to verify the precedence of current operator the the uppermost operator in the operations stack.
+     * Precedence is: multiplication and division have precedence over sum and substraction
+     * Sum and substraction have precedence over parenthesis which represents grouping.
      * @param operator1 A given operator
      * @param operator2 Second operator to compare
-     * @return true if the operator 1 has precedence , otherwise
+     * @return true if the operator 1 is multi , false otherwise
      */
-    private boolean precedence(char operator1, char operator2) {
+    protected boolean precedence(char operator1, char operator2) {
         if (operator2 == '(' || operator2 == ')') return false;
         return (operator1 != '*' && operator1 != '/') || (operator2 != '+' && operator2 != '_');
     }

@@ -1,4 +1,4 @@
-package org.juancampos;
+package org.juancampos.exceptions;
 
 public class CalculatorException extends RuntimeException{
     public CalculatorException() {

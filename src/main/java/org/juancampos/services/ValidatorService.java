@@ -1,8 +1,6 @@
-package org.juancampos;
+package org.juancampos.services;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.juancampos.enums.Operators;
@@ -17,8 +15,8 @@ import java.util.regex.Pattern;
  * the command at least starts with a valid operation, as a short circuit
  * to not even process something that might be invalid right away.
  */
-public class Validator implements IValidator {
-    private static final Logger LOGGER = LogManager.getLogger(Validator.class.getName());
+public class ValidatorService implements IValidatorService {
+    private static final Logger LOGGER = LogManager.getLogger(ValidatorService.class.getName());
     public static final String VALID_INPUT = "VALID INPUT";
     public static final String INVALID_INPUT_EMPTY_COMMAND = "Invalid Input. Empty command";
     public static final String INVALID_INPUT_MAL_FORMED_PARENTHESIS = "Invalid Input. Mal formed parenthesis";
@@ -31,33 +29,44 @@ public class Validator implements IValidator {
     public static final String INPUT_COMMAND_HAS_INVALID_FIRST_OPERATION = "Input command has invalid first operation";
     public static final String INPUT_COMMAND_HAS_INVALID_CHARACTERS = "Input command has invalid characters";
 
+
+    private ValidatorService()
+    {
+        // private constructor
+    }
+
+    // Inner class to provide instance of class
+    private static class ValidatorSinglenton
+    {
+        private static final IValidatorService INSTANCE = new ValidatorService();
+    }
+
+    public static IValidatorService getInstance()
+    {
+        return ValidatorSinglenton.INSTANCE;
+    }
     /**
      * Main validator method. It will call subroutines to validate each scenario
      * @param input The command input string to validate.
-     * @return A tuple containing the validation result (true or false) and a validation message.
+     * @return True if is valid false otherwise.
      */
     @Override
-    public Pair<Boolean,String> validate(String input){
-        Pair<Boolean,String> validationResult = ImmutablePair.of(true, VALID_INPUT);
+    public boolean validate(String input){
         if (isEmptyCommand(input)){
-            LOGGER.debug(INPUT_IS_EMPTY_COMMAND);
-            return ImmutablePair.of(false, INVALID_INPUT_EMPTY_COMMAND);
+            LOGGER.error(INPUT_IS_EMPTY_COMMAND);
+            return false;
         }
         String trimmedInput = input.trim();
         if (isInvalidParenthesis(trimmedInput)) {
-            LOGGER.debug(INPUT_COMMAND_HAS_INVALID_PARENTHESIS);
-            return ImmutablePair.of(false, INVALID_INPUT_MAL_FORMED_PARENTHESIS);
+            LOGGER.error(INPUT_COMMAND_HAS_INVALID_PARENTHESIS);
+            return false;
         }
         if (isInvalidFirstOperation(trimmedInput)) {
-            LOGGER.debug(INPUT_COMMAND_HAS_INVALID_FIRST_OPERATION);
-            return ImmutablePair.of(false, INVALID_FIRST_OPERATION_MUST_BE_ADD_SUB_MULT_DIV_OR_LET);
-        }
-        if (invalidCharacters(trimmedInput)) {
-            LOGGER.debug(INPUT_COMMAND_HAS_INVALID_CHARACTERS);
-            return ImmutablePair.of(false, INVALID_CHARACTERS_IN_INPUT);
+            LOGGER.error(INPUT_COMMAND_HAS_INVALID_FIRST_OPERATION);
+            return false;
         }
         LOGGER.debug(SUCCESSFUL_VALIDATION);
-        return validationResult;
+        return true;
     }
 
     /**
@@ -77,6 +86,9 @@ public class Validator implements IValidator {
      */
     @Override
     public boolean isInvalidParenthesis(String input) {
+        if (!StringUtils.contains(input,"(") && !StringUtils.contains(input,")")) {
+            return true;
+        }
         int balance = 0;
         StringBuilder sbInput = new StringBuilder(input);
         for (int i = 0; i < sbInput.length(); i++) {
@@ -128,11 +140,16 @@ public class Validator implements IValidator {
      * @return True if there are invalid charactes in the string, false otherwise.
      */
     @Override
-    public boolean invalidCharacters(String input){
+    public boolean validateCharacters(String input){
         Pattern pattern;
         Matcher matcher;
-        pattern = Pattern.compile("^[a-zA-Z0-9()#_*+-/]*$");
+        pattern = Pattern.compile("^[a-zA-Z0-9,()-]*$");
         matcher = pattern.matcher(input);
-        return !matcher.matches();
+        if(matcher.matches()) {
+            LOGGER.debug(VALID_INPUT);
+            return true;
+        }
+        LOGGER.error(INVALID_CHARACTERS_IN_INPUT);
+        return false;
     }
 }

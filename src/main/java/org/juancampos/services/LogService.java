@@ -14,6 +14,23 @@ public class LogService implements  ILogService{
     private static final Logger LOGGER = LogManager.getLogger(LogService.class.getName());
     public static final String DEBUG = "DEBUG";
     public static final String ERROR = "ERROR";
+    public static final String INFO = "INFO";
+
+    private LogService()
+    {
+        // private constructor
+    }
+
+    // Inner class to provide instance of class
+    private static class LogServiceSinglenton
+    {
+        private static final ILogService INSTANCE = new LogService();
+    }
+
+    public static ILogService getInstance()
+    {
+        return LogServiceSinglenton.INSTANCE;
+    }
 
     @Override
     public Level getLogLevel(String logLevel){
@@ -21,15 +38,16 @@ public class LogService implements  ILogService{
         if (StringUtils.isNotEmpty(logLevel ) && StringUtils.isNotBlank(logLevel)){
             String changeLogLevel = logLevel.toUpperCase().trim();
             switch(changeLogLevel) {
-                case ERROR:
-                    return Level.ERROR;
+                case INFO:
+                    return Level.INFO;
+
                 case DEBUG:
                         return Level.DEBUG;
                 default:
-                    return Level.INFO;
+                    return Level.ERROR;
             }
         }
-        return Level.INFO;
+        return Level.ERROR;
     }
 
     @Override
