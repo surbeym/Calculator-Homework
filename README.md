@@ -1,4 +1,4 @@
-# Submission of the Java Candidate Homework at Synopsys by Juan Campos
+# Submission of the Java Candidate Homework by Juan Campos
 
 
 This is my implementation for the simple command line calculator.

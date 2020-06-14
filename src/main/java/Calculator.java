@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 /**
- * Synopsys Java Candidate Homework
+ * Java Candidate Homework
  * Calculator program in Java that evaluates expressions in a very simple integer expression language.
  * The program takes an input on the command line, computes the result, and prints it to the console.
  * The application uses the Command Line Interface CLI to parse the command line.
