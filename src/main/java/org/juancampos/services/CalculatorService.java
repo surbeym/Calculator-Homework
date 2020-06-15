@@ -1,12 +1,11 @@
 package org.juancampos.services;
 
 import org.apache.commons.lang3.mutable.MutableInt;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.juancampos.exceptions.CalculatorException;
 import org.juancampos.enums.Operators;
+import org.juancampos.exceptions.CalculatorException;
+import org.juancampos.utils.VariableExpression;
 
 import java.text.MessageFormat;
 import java.util.HashMap;
@@ -75,7 +74,7 @@ public class CalculatorService implements ICalculatorService {
         Stack<Long> numbers = new Stack<>(); // the stack that stores numbers to be operated on
         Stack<Character> operators = new Stack<>();// the stack that holds the operators
         Stack<String> expressions = new Stack<>();//the stack to hold the expressions
-        HashMap<String, Pair<Long,Boolean>> variablesMap = new HashMap<>(); //variables map to store values
+        HashMap<String, VariableExpression> variablesMap = new HashMap<>(); //variables map to store values
         MutableInt variablesAssignedBalance = new MutableInt(0); //Checks the variables have been assigned
         MutableInt letParenthesis = new MutableInt(0); //counter for the number of parenthesis to be inside a LET operator
         boolean openLet = false;// flag to check process is inside a LET operator
@@ -140,7 +139,7 @@ public class CalculatorService implements ICalculatorService {
                         LOGGER.debug(MessageFormat.format("Operation result = {0} was pushed to numbers stack",numbers.peek()));
                         if (numbers.size() == 1 && !expressions.isEmpty()) { //the expression at top of stack will be the variable name that needs value assigned.
                             String pop = expressions.pop();
-                            variablesMap.put(pop, ImmutablePair.of(numbers.peek(), true));
+                            variablesMap.put(pop, new VariableExpression(numbers.peek(), true));
                             LOGGER.debug(MessageFormat.format("Since only one number left in stack, the value {0} is a result that can be assigned to variable name{1}",numbers.peek(),pop ));
                         }
                     }
@@ -155,8 +154,8 @@ public class CalculatorService implements ICalculatorService {
                 LOGGER.debug(MessageFormat.format(OPERATORS_STACK_PUSH,operators.peek()));
             }
         }
-        for (Pair<Long,Boolean> variableName:variablesMap.values()){  //If at the end of the operations we still have unnasigned variables, its an issue.
-            if (Boolean.FALSE.equals(variableName.getRight())) {
+        for (VariableExpression variable:variablesMap.values()){  //If at the end of the operations we still have unnasigned variables, its an issue.
+            if (Boolean.FALSE.equals(variable.isValueAssigned())) {
                 LOGGER.error(MISSING_VARIABLES_NOT_ASSIGNED);
                 throw new CalculatorException(MISSING_VARIABLES_NOT_ASSIGNED);
             }
@@ -180,7 +179,7 @@ public class CalculatorService implements ICalculatorService {
      * @param variableAssignedBalance The counter to make sure all variables are assigned.
      * @return The current position in the command string.
      */
-    protected int resolveVariableName(String s, Stack<Long> numbers, HashMap<String, Pair<Long, Boolean>> variablesMap, int i, char calculatorChar, MutableInt variableAssignedBalance) {
+    protected int resolveVariableName(String s, Stack<Long> numbers, HashMap<String, VariableExpression> variablesMap, int i, char calculatorChar, MutableInt variableAssignedBalance) {
         StringBuilder variableName = new StringBuilder(String.valueOf(calculatorChar));
         while (i < s.length() - 1 && Character.isAlphabetic(s.charAt(i+1))) {
             variableName.append(s.charAt(i + 1));
@@ -191,16 +190,16 @@ public class CalculatorService implements ICalculatorService {
             LOGGER.error(INVALID_ARGUMENT_FOR_CALCULATOR);
             throw new CalculatorException(INVALID_ARGUMENT_FOR_CALCULATOR);
         }
-        if (variablesMap.containsKey(variableName.toString()) && variablesMap.get(variableName.toString()).getRight()){
-            numbers.push(variablesMap.get(variableName.toString()).getLeft());
+        if (variablesMap.containsKey(variableName.toString()) && variablesMap.get(variableName.toString()).isValueAssigned()){
+            numbers.push(variablesMap.get(variableName.toString()).getValue());
             LOGGER.debug(MessageFormat.format(NUMBER_STACK_PUSH,numbers.peek()));
             i++;
         } else if (numbers.size() == 1 && variableAssignedBalance.intValue() > 0){
-            variablesMap.put(variableName.toString(), ImmutablePair.of(numbers.peek(), true));
+            variablesMap.put(variableName.toString(), VariableExpression.of(numbers.peek(), true));
             variableAssignedBalance.decrement();
-            LOGGER.debug(MessageFormat.format(VARIABLE_ASSIGNED,variableName.toString(),variablesMap.get(variableName.toString()).getLeft()));
+            LOGGER.debug(MessageFormat.format(VARIABLE_ASSIGNED,variableName.toString(),variablesMap.get(variableName.toString()).isValueAssigned()));
         } else {
-            variablesMap.put(variableName.toString(), ImmutablePair.of(0L, false));
+            variablesMap.put(variableName.toString(), VariableExpression.of(0,false));
             variableAssignedBalance.increment();
             LOGGER.debug(MessageFormat.format(VARIABLE_NOT_ASSIGNED_PUSHED_TO_EXPRESSIONS_STACK,variableName.toString()));
         }
@@ -218,7 +217,7 @@ public class CalculatorService implements ICalculatorService {
      * @param letParenthesis The parenthesis counter for internal let operations
      * @return The position of the string to continue parsing.
      */
-    private int processLetOperator(int i, String s, Stack<Character> operators, Stack<String>expressions, HashMap<String, Pair<Long,Boolean>> variablesMap, MutableInt variableUnnasignedBalance,MutableInt letParenthesis) {
+    private int processLetOperator(int i, String s, Stack<Character> operators, Stack<String>expressions, HashMap<String, VariableExpression> variablesMap, MutableInt variableUnnasignedBalance,MutableInt letParenthesis) {
         variableUnnasignedBalance.increment();
         LOGGER.debug(LET_OPERATOR_TO_ASSIGN_VALUE_TO_VARIABLE_BEGINS);// The LET operator is present, a LET expression is parsed
         i++;
@@ -262,12 +261,12 @@ public class CalculatorService implements ICalculatorService {
                 i++;
             }
             possibleNumber = possibleNumber * negate;
-            variablesMap.put(variableName.toString(), ImmutablePair.of(possibleNumber, true));
+            variablesMap.put(variableName.toString(), VariableExpression.of(possibleNumber, true));
             variableUnnasignedBalance.decrement();  //variable names balance decrements since variable has value assigned
             LOGGER.debug(MessageFormat.format(VARIABLE_ASSIGNED,variableName.toString(),possibleNumber));
             i++;
         }else {
-            variablesMap.put(variableName.toString(), ImmutablePair.of(0L, false));
+            variablesMap.put(variableName.toString(), VariableExpression.of(0L, false));
             expressions.push(variableName.toString());
             LOGGER.debug(MessageFormat.format(VARIABLE_NOT_ASSIGNED_PUSHED_TO_EXPRESSIONS_STACK, variableName.toString()));
             i--; //reset counter
