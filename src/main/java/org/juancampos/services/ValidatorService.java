@@ -18,16 +18,12 @@ import java.util.regex.Pattern;
 public class ValidatorService implements IValidatorService {
     private static final Logger LOGGER = LogManager.getLogger(ValidatorService.class.getName());
     public static final String VALID_INPUT = "VALID INPUT";
-    public static final String INVALID_INPUT_EMPTY_COMMAND = "Invalid Input. Empty command";
-    public static final String INVALID_INPUT_MAL_FORMED_PARENTHESIS = "Invalid Input. Mal formed parenthesis";
     public static final int MINIMAL_OPERATION = 6;
     public static final String SUCCESSFUL_VALIDATION = "Successful validation";
-    public static final String INVALID_FIRST_OPERATION_MUST_BE_ADD_SUB_MULT_DIV_OR_LET = "Invalid First Operation. Must be ADD, SUB, MULT, DIV or LET";
     public static final String INVALID_CHARACTERS_IN_INPUT = "Invalid characters in input";
     public static final String INPUT_IS_EMPTY_COMMAND = "Input is empty command";
     public static final String INPUT_COMMAND_HAS_INVALID_PARENTHESIS = "Input command has invalid parenthesis";
     public static final String INPUT_COMMAND_HAS_INVALID_FIRST_OPERATION = "Input command has invalid first operation";
-    public static final String INPUT_COMMAND_HAS_INVALID_CHARACTERS = "Input command has invalid characters";
 
 
     private ValidatorService()
@@ -141,10 +137,8 @@ public class ValidatorService implements IValidatorService {
      */
     @Override
     public boolean validateCharacters(String input){
-        Pattern pattern;
-        Matcher matcher;
-        pattern = Pattern.compile("^[a-zA-Z0-9,()-]*$");
-        matcher = pattern.matcher(input);
+        Pattern pattern = Pattern.compile("^[a-zA-Z0-9,()-]*$");
+        Matcher matcher = pattern.matcher(input);
         if(matcher.matches()) {
             LOGGER.debug(VALID_INPUT);
             return true;

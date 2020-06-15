@@ -66,6 +66,13 @@ Create a Maven or Gradle build definition so your project may be built in any st
 - Multi-line calculations. The complete entry in quotes will be considered the operation.
 - Logging to a file. The logging is console only.
 
+## Deliverables
+- A repository that can generate an executable jar via a maven build. The name of the jar built is:
+```Calculator-1.0-SNAPSHOT-jar-with-dependencies.jar```
+- Access to Github repository at [github.com/jpcampos/Calculator-Homework](github.com/jpcampos/Calculator-Homework)
+- A CI build using github actions located at [https://github.com/jpcampos/Calculator-Homework/actions](https://github.com/jpcampos/Calculator-Homework/actions) for a Continous Integration build.
+- Unit tests in the maven build using Spock Tests accesible via IDE as well.
+
 ## Design
 The calculator solution is based on a standard approach to a basic calculator problem.  
 Basically the core of the solution uses two stacks:  
@@ -201,12 +208,34 @@ The options are:
 
 ## Running the tests
 
-* Open the Project sidebar and navigate to the src/test/groovy folder
-* Right click on the folder and choose the option:
-```
-Run "All Tests"
-```
-All the tests are written in spock. Run the tests and look at running console to get more information on what tests are doing during execution.
+* The tests are executed during the maven build, but if there is a need to execute them manually, this can be done in the IDE.
+* If using Intellij, these are the steps:
+    * Open the Project sidebar and navigate to the src/test/groovy folder
+    * Right click on the folder and choose the option:
+    ```
+    Run "All Tests"
+    ```
+All the tests are written in spock. Run the tests and look at the console to get more information on what tests are doing during execution.
+A total of 120 tests should be successfully executed.
+
+## Continuous Integration Build
+
+A continuous integration build was set up using Github actions. 
+The build history can be viewed at:
+
+[Calculator CI Build History](https://github.com/jpcampos/Calculator-Homework/actions?query=workflow%3A%22Java+CI+with+Maven%22)
+
+
+The CI build consists of:
+- A java maven build
+- Triggers to be executed on:
+    - Merge to master
+    - A pull request from a branch from master
+    - A scheduled nightly build corresponding to 07:40 AM UTC time (around 7:40 AM Calgary time)
+
+The source file for the CI build is located in the source project at:
+
+[Calculator CI Build yml file](https://github.com/jpcampos/Calculator-Homework/blob/master/.github/workflows/maven.yml)
 
 
 ## Built With

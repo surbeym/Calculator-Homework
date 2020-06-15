@@ -1,5 +1,6 @@
 package org.juancampos
 
+import org.apache.commons.lang3.mutable.MutableBoolean
 import org.apache.commons.lang3.mutable.MutableInt
 import org.apache.commons.lang3.tuple.Pair
 import org.juancampos.exceptions.CalculatorException
@@ -10,7 +11,7 @@ import spock.lang.Specification
 import spock.lang.Unroll
 
 
-class CalculatorEngineSpec extends Specification {
+class CalculatorServiceSpec extends Specification {
     @Unroll
     def "Test resolve variable "() {
         given: "A variables map"
@@ -18,27 +19,44 @@ class CalculatorEngineSpec extends Specification {
         final String variableName = "BAR"
         if (variableName == inputString)
             variablesMap = mapValues
-        ICalculatorService calculatorEngine = CalculatorService.getInstance()
+        ICalculatorService calculatorService = CalculatorService.getInstance()
         when:"The calculator engine resolve variable name method is called"
-        def actualCounter = calculatorEngine.resolveVariableName(inputString,numberStack,variablesMap,0 as int ,inputCharacter as char,new MutableInt(0))
+        def actualCounter = calculatorService.resolveVariableName(inputString,numberStack,[] as Stack<String>,variablesMap,0 as int ,new MutableInt(0))
         then: "The counter and variablesMap sizes are as expected"
         actualCounter == expectedCounter
         variablesMap.size() == expectedMapSize
         variablesMap.get(inputString).isValueAssigned() == resolvedValue
         where:"Parameterized Values"
-        inputString   | inputCharacter | numberStack            | mapValues                            || expectedCounter | expectedMapSize | resolvedValue
-        "FOO"         | 'F' as char    | [1L] as Stack<Long>    |[]                                    || 2               | 1               | false
-        "BAR"         | 'B' as char    | [2L] as Stack<Long>    |[BAR: VariableExpression.of(1L,true)] || 3               | 1               | true
-        "BAR"         | 'B' as char    | [2L,3L] as Stack<Long> |[BOO:VariableExpression.of(1L,true)]  || 2               | 2               | false
+        inputString   | numberStack            | mapValues                            || expectedCounter | expectedMapSize | resolvedValue
+        "FOO"         | [1L] as Stack<Long>    |[]                                    || 2               | 1               | false
+        "BAR"         | [2L] as Stack<Long>    |[BAR: VariableExpression.of(1L,true)] || 3               | 1               | true
+        "BAR"         | [2L,3L] as Stack<Long> |[BOO:VariableExpression.of(1L,true)]  || 2               | 2               | false
     }
 
     @Unroll
-    def "Test resolve variable name will throw invalid argument exception when input string is : #inputString "() {
+    def "Test process let operator will throw calculator exception when input string is : #inputString "() {
         given: "A variables map"
         HashMap<String, Pair<Long,Boolean>> variablesMap = new HashMap<>()
-        ICalculatorService calculatorEngine = CalculatorService.getInstance()
+        ICalculatorService calculatorService = CalculatorService.getInstance()
         when:"The calculator engine resolve variable name method is called"
-        calculatorEngine.resolveVariableName(inputString, [1L] as Stack<Long>,variablesMap,0 as int ,'F'as char,new MutableInt(0))
+        calculatorService.processLetOperator(0,inputString, ['+'] as Stack<Character>,["COL"] as Stack<String>,variablesMap,new MutableInt(0), new MutableBoolean((true)))
+        then: "The counter and variablesMap sizes are as expected"
+        thrown CalculatorException
+        where:"Parameterized Values"
+        inputString   | _
+        "(FOO("         | _
+        "(FOO5"         | _
+        "(BAR("         | _
+        "(BAR6"         | _
+    }
+
+    @Unroll
+    def "Test resolve processLetOperator name will throw invalid argument exception when input string is : #inputString "() {
+        given: "A variables map"
+        HashMap<String, Pair<Long,Boolean>> variablesMap = new HashMap<>()
+        ICalculatorService calculatorService = CalculatorService.getInstance()
+        when:"The calculator engine resolve variable name method is called"
+        calculatorService.resolveVariableName(inputString, [1L] as Stack<Long>,[] as Stack<Integer>,variablesMap,0 as int ,new MutableInt(0))
         then: "The counter and variablesMap sizes are as expected"
         thrown CalculatorException
         where:"Parameterized Values"
@@ -81,36 +99,20 @@ class CalculatorEngineSpec extends Specification {
 
     }
 
-    @Unroll
-    def "Test the precedence method. #operator1 has precedence over #operator2 = #expectedResult"() {
-        given:"A calculator engine"
-        def engine = CalculatorService.getInstance() as CalculatorService
-        when:"Operation method is called"
 
-        then:"result is as expected"
-        engine.precedence(operator1 as char,operator2 as char) == expectedResult
-        where: "Parameterized table"
-        operator1    | operator2  |   expectedResult
-        '+'         | '+'         |   true
-        '+'         | '_'         |   true
-        '+'         | '*'         |   true
-        '+'         | '/'         |   true
-        '+'         | '('         |   false
-        '+'         | '('         |   false
-        '+'         | ')'         |   false
-        '+'         | ')'         |   false
-        '_'         | '+'         |   true
-        '_'         | '_'         |   true
-        '_'         | '*'         |   true
-        '_'         | '/'         |   true
-        '*'         | '+'         |   false
-        '*'         | '_'         |   false
-        '*'         | '*'         |   true
-        '*'         | '/'         |   true
-        '/'         | '+'         |   false
-        '/'         | '_'         |   false
-        '/'         | '*'         |   true
-        '/'         | '/'         |   true
+    @Unroll
+    def "Test calculate returns zero when input string = #inputString"() {
+        given: "A calculator instance"
+        ICalculatorService calculatorService = CalculatorService.getInstance()
+        when:"The calculator calculate method is called"
+        def actual = calculatorService.calculate(inputString)
+        then: "The calculate method returns zero"
+        actual == 0
+        where:"Parameterized Values"
+        inputString    | _
+        ""             | _
+        null           | _
+
     }
 
 }

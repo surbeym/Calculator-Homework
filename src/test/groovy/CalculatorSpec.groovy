@@ -16,13 +16,14 @@ class CalculatorSpec extends Specification {
         where: "Parameterized Values"
         inputValues                                                   | commandInput
         [new StringBuilder("ADD   (1,A   DD(1,   2))")] as List<StringBuilder> | "ADD(1,ADD(1,2))"
+        [new StringBuilder("MULT  (1,A DD(1,   2))")] as List<StringBuilder>   | "MULT(1,ADD(1,2))"
         [new StringBuilder("let(a, let(b, 10, add(b, b)), let(b, 20, add(a, b))")] as List<StringBuilder> | "LET(A,LET(B,10,ADD(B,B)),LET(B,20,ADD(A,B))"
     }
 
     @Unroll
     def "test calculator call when input command is #inputOperations then expectedResult = #expectedResult"() {
         given: "A calculator instance initialized with the command line argument"
-        def calculator = new Calculator(operations: inputOperations)
+        def calculator = new Calculator(operations: inputOperations,loglevel: "DEBUG")
 
         when: "The calculator is called to execute the command and return the value"
         def actualResult = calculator.call()
@@ -40,6 +41,7 @@ class CalculatorSpec extends Specification {
         [new StringBuilder("sub(-1,mult(4,div(3,div(3,3))))")] as List<StringBuilder>              | -13
         [new StringBuilder("let(zones,sub(-1,mult(4,div(3,div(3,3)))),div(39,zones))")] as List<StringBuilder>  | -3
         [new StringBuilder("let(az, 5, add(az, az))")] as List<StringBuilder>                      | 10
+        [new StringBuilder("let(az,-5, add(az, az))")] as List<StringBuilder>                      | -10
         [new StringBuilder("mult(5,let(ans, 5, add(ans, ans)))")] as List<StringBuilder>           | 50
         [new StringBuilder("mult(let(ans, 5, add(ans, ans)),4)")] as List<StringBuilder>           | 40
         [new StringBuilder("mult(4,let(ans, 5, add(ans, ans)))")] as List<StringBuilder>           | 40
@@ -51,6 +53,8 @@ class CalculatorSpec extends Specification {
         [new StringBuilder("let(a, let(b, 10, add(b, 5)), let(b, 20, add(a, b)))")] as List<StringBuilder>  | 35
         [new StringBuilder("let(foo, let(bar, 10, add(bar, bar)), let(bar, 20, add(foo, bar)))")] as List<StringBuilder>      | 40
         [new StringBuilder("add(let(col,add(2,3),mult(2,col)),mult(let(bar,2,sub(10,bar)),add(1,let(foo,2,add(3,foo)))))")] as List<StringBuilder>    | 58
+        [new StringBuilder("add(mult(4,let(ans, 5, add(ans, ans))),let(ans, 5, let(bus, mult(ans, 10), add(bus, ans))))")]as List<StringBuilder> | 95
+        [new StringBuilder("let(az, add(1, 6), add(az, add(mult(4,let(ans, 5, add(ans, ans))),let(ans, 5, let(bus, mult(ans, 10), add(bus, ans))))))")] as List<StringBuilder>   | 102
     }
 
     @Unroll

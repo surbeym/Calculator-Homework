@@ -54,19 +54,20 @@ class ValidatorSpec extends Specification {
         "*(1,2)"      | false
         "+(1,2)"      | false
         "/(1,2)"      | false
-        "_(-1,2)"    | false
-        "#(-1,2)"    | false
+        "_(-1,2)"     | false
+        "#(-1,2)"     | false
         "*)1,2)"      | true
         "+)1,2)"      | true
         "/)1,2)"      | true
-        "_)-1,2)"    | true
-        "#)-1,2)"    | true
+        "_)-1,2)"     | true
+        "#)-1,2)"     | true
         "-)1,2)"      | true
-        "ADD(1,2)"     | true
-        "MOLT(1,2)"    | true
-        "MULT(1,2)"    | true
-        "RES(1,2)"     | true
-        "%(1,2)"       |true
+        "ADD(1,2)"    | true
+        "MOLT(1,2)"   | true
+        "MULT(1,2)"   | true
+        "RES(1,2)"    | true
+        "%(1,2)"      | true
+        "+(1,2"       | true
     }
 
     @Unroll
